@@ -153,27 +153,50 @@ class DataService {
         });
         result[signalId] = allData;
       } else {
-        const step = Math.ceil(totalCount / limit);
+        // 计算窗口大小
+        const window = Math.ceil(totalCount / limit);
+        console.log("窗口大小", window);
+
         const sampledData = [];
 
-        for (let i = 0; i < totalCount; i += step) {
-          const data = await DataModel.findAll({
-            attributes: ['time', 'value'],
-            where: {
-              signalId: signalId,
-              time: {
-                [Op.between]: [startTime, endTime]
-              }
-            },
-            offset: i,
-            limit: 1  // 每步获取一条数据
-          });
+        // 使用 DataModel 的 findAll 方法来查询数据，并在查询时过滤
+        const data = await DataModel.findAll({
+          attributes: [
+            'time',
+            'value',
+            [Sequelize.literal('ROW_NUMBER() OVER (ORDER BY id)'), 'rowNum'] // 使用聚合函数生成行号
+          ],
+          where: {
+            belongId: belongId,
+            signalId: signalId
+          },
+          raw: true, // 返回原始数据，以便我们可以访问聚合函数的结果
+        });
 
-          if (data.length > 0) {
-            sampledData.push(data[0]);
-          }
+
+        // 过滤数据，只保留 row_num % batchSize = 0 的记录
+        // console.log(data);
+        const newData: { time: number; value: number; }[] = [];
+        // const filteredData = data.filter((item,index) => {
+        //   if((index - 1) % window === 0){
+        //       // 提取 time 和 value 属性
+        //       const newItem = {
+        //         time: item.time,
+        //         value: item.value,
+        //       };
+        //     newData.push(newItem);
+        //   }
+        // });
+        for (let i = 0; i < data.length; i += window) {
+          const item = data[i]
+          const newItem = {
+            time: item.time,
+            value: item.value,
+          };
+          newData.push(newItem);
         }
-        result[signalId] = sampledData;
+        console.log(newData.length);
+        result[signalId] = newData;
       }
     }
 
