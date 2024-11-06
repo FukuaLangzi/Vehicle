@@ -48,6 +48,9 @@ class TestConfigService {
   // 各个板卡的连接状态
   boardConnectStatus: boolean[] = []
 
+  //加入北斗受时的状态判断
+  useBeidou: boolean = false
+
   /**
    * 创建测试配置
    * @param param
@@ -194,6 +197,9 @@ class TestConfigService {
     this.enableMessage = res.enableMessage
     this.currentTestConfig = testConfig
     this.setSignalsIdNameMap(testConfig)
+    // 获取北斗受时
+    this.useBeidou = testConfig.dataWrap.useBeidou
+    console.log("北斗受时",this.useBeidou);
     await this.getSpecialDigitalKeyList(testConfig!)
     // 创建一条新的记录
     await this.createNewRecord(testConfig!)
@@ -201,7 +207,7 @@ class TestConfigService {
     // TODO 连接下位机并且发送消息,调试的时候没有下位机所以注释掉，使用startMock
     // 下发逻辑放到后面，因为要等到所有的数据都准备好了才能下发,并且如果失败、停止下发的时候比较Ok
     try {
-      await connectWithMultipleBoards(hostPortList, 0)
+      await connectWithMultipleBoards(hostPortList, 0,this.useBeidou)
     } catch (e) {
       return "连接下位机失败"
     }
