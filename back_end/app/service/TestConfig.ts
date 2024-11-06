@@ -441,7 +441,7 @@ class TestConfigService {
           resolve(true);
         }
       };
-
+      console.log("发送了一批数据，数据长度：",data.length);
       this.child.once('message', handleMessage);
 
       try {
