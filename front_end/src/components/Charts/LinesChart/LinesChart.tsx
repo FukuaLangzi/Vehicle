@@ -427,14 +427,20 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
       //计算展示的值
       for (const key in group) {
         let sum = 0,
-          average = 0;
+          average = 0,
+          max = 0,
+          min = Infinity;
         group[key].forEach((x) => {
           if (x) sum += Number(x.value);
+          if (x.value > max) max = Number(x.value);
+          if (x.value < min) min = Number(x.value);
         });
         average = sum / group[key].length;
         infoGroup.push({
           [key]: {
             sum: sum.toFixed(2),
+            max: max.toFixed(2),
+            min: min.toFixed(2),
             average: average.toFixed(2),
             num: group[key].length,
           },
@@ -446,11 +452,11 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
         const str =
           "名称:" +
           keys[0] +
-          " 总值:" +
-          values[0].sum +
-          " 均值:" +
-          values[0].average +
-          " 数量:" +
+          "  最大值:" +
+          values[0].max +
+          "  最小值:" +
+          values[0].min +
+          "  均值:" +
           values[0].num;
         textGroup.push(str);
       }
@@ -460,7 +466,7 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
           backgroundColor: "#333",
           text: info,
           bottom: 0,
-          right: "10%",
+          right: "20%",
           width: 100,
           textStyle: {
             fontSize: 12,
