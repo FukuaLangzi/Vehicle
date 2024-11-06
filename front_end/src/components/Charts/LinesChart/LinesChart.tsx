@@ -200,7 +200,8 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
         array.forEach((item: any) => {
           test.push({
             time: item.time,
-            value: item.value.toFixed(6),
+            value:
+              item.value instanceof String ? item.value : item.value.toFixed(6),
           });
         });
         currentTestChartData.set(key, test);
