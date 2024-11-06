@@ -108,7 +108,7 @@ export const connectWithMultipleBoards = (
       console.log('连接已结束');
       if (!isManuallyClosed) {
         setTimeout(() => {
-          reconnectWithMultipleBoards(hostPortList, index);
+          reconnectWithMultipleBoards(hostPortList, index,true);
         }, reconnectInterval);
       }
     });
