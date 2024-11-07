@@ -263,13 +263,11 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
             show: true,
             feature: {
               brush: {
-                show: true,
                 title: {
                   lineX: "框选计算",
                   clear: "关闭框选",
                 },
               },
-              saveAsImage: { show: true },
             },
             top: 0,
             right: 15,
@@ -416,7 +414,7 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
       };
       chartRef.current?.setOption(option);
     });
-
+    let rangeStore = [0, 0];
     chartRef.current?.on("brushSelected", (params: any) => {
       if (params.batch.length < 1 || params.batch[0].areas.length < 1) {
         return;
@@ -430,8 +428,15 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
         endDate = new Date(range[range.length - 1]);
       const timeData =
         startDate.toLocaleString() + "至" + endDate.toLocaleString();
-
       range[range.length - 1] = range[range.length - 1] + 1;
+
+      if (JSON.stringify(rangeStore) === JSON.stringify(range) || !range[0]) {
+        chartRef.current?.setOption({
+          title: { text: "", backgroundColor: "transparent" },
+        });
+        return;
+      }
+      rangeStore = range;
       //获取区域范围内的数据
       for (let sIdx = 0; sIdx < params.batch[0].selected.length; sIdx++) {
         const name = params.batch[0].selected[sIdx].seriesName;
@@ -449,6 +454,7 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
         });
       }
       //计算展示的值
+
       for (const key in group) {
         let sum = 0,
           average = 0,
@@ -481,7 +487,7 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
           "  最小值:" +
           values[0].min +
           "  均值:" +
-          values[0].num;
+          values[0].average;
         textGroup.push(str);
       }
       const info = "时间:" + timeData + "\n" + textGroup.join("\n");
