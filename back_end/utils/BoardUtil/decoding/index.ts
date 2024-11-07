@@ -148,7 +148,7 @@ export const decodingBoardMessage = (buffer: Buffer): IReceiveData => {
 // 处理板卡状态的信息
 export const decodingBoardStatus = (buffer: Buffer): boolean[] => {
   const result: boolean[] = []
-  for (let i = 3; i <= 8; i++) {
+  for (let i = 3; i <= 11; i++) {
     // 和1与
     result.push((buffer[i] & 0x01) === 0x01)
   }
