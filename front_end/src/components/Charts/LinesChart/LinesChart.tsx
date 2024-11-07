@@ -12,6 +12,7 @@ interface ISeries {
   symbol: string;
   data: Array<number>[];
   color?: string;
+  lineStyle?: any;
 }
 
 const LinesChart: React.FC<IChartInterface> = (props) => {
@@ -21,8 +22,8 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
     windowSize,
     colors,
     isReplayModal,
+    lineTypeCode,
   } = props;
-
   const chartRef = useRef<echarts.ECharts | null>();
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
@@ -153,7 +154,30 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
           );
         })
       );
-
+      // 更新之前加上虚线
+      dataRef.current = dataRef.current.map((item) => {
+        let lineStyle: { type: string };
+        if (lineTypeCode === 1) {
+          // 实线
+          lineStyle = {
+            type: "solid",
+          };
+        } else if (lineTypeCode === 2) {
+          // 虚线
+          lineStyle = {
+            type: "dashed",
+          };
+        } else {
+          //点线
+          lineStyle = {
+            type: "dotted",
+          };
+        }
+        return {
+          ...item,
+          lineStyle,
+        };
+      });
       // Update chart options
       const option = {
         xAxis: {
@@ -201,7 +225,9 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
           test.push({
             time: item.time,
             value:
-              item.value instanceof String ? item.value : item.value.toFixed(6),
+              typeof item.value === "string"
+                ? item.value
+                : item.value.toFixed(6),
           });
         });
         currentTestChartData.set(key, test);
@@ -350,7 +376,6 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
 
   useEffect(() => {
     chartRef.current?.on("click", (params) => {
-      console.log(params);
       const { data } = params;
       if (startRange === -1) {
         setStartRange(data[0]);
@@ -390,8 +415,6 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
         ],
       };
       chartRef.current?.setOption(option);
-
-      console.log(chartRef.current);
     });
 
     chartRef.current?.on("brushSelected", (params: any) => {
@@ -521,7 +544,6 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
                       isDuring(item[0], startRange, endRange)
                     ).length,
                 };
-                console.log(result);
                 return result;
               })
             : []
