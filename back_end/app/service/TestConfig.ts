@@ -336,12 +336,13 @@ class TestConfigService {
     };
   }) {
     // 如果当前的currentTestConfigHistory超过了CURRENT_DATA_LIMIT，那么存储到数据库
-    if (this.currentTestConfigHistoryData.length > CURRENT_DATA_LIMIT) {
+    if (this.currentTestConfigHistoryData.length >= CURRENT_DATA_LIMIT) {
       console.log(
         "存储到数据库,当前数据量",
         this.currentTestConfigHistoryData.length
       );
       const arr = Array.from(this.currentTestConfigHistoryData);
+      console.log("存储前数据", arr.length);
       this.clearOnlyData();
       await this.saveCurrentDataToSql(
         this.currentTestConfig!.name,
