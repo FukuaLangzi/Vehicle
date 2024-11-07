@@ -180,14 +180,7 @@ const DataSee = () => {
       render: () => (
         <Space align={"start"}>
           {
-            isReceiving ? (
-              <>
-                <Button type={"link"} onClick={() => handleShowCurrentData()}>数据监视</Button>
-                <Button type={"link"} onClick={() => handleStopTcpConnect()}>停止接收</Button>
-              </>
-            ) : (
-              <Button type={"link"} onClick={() => handleStartTcpConnect()}>开始接收</Button>
-            )
+            (<Button type={"link"} onClick={() => handleShowCurrentData()}>数据监视</Button>)
           }
         </Space>
       ),
