@@ -88,7 +88,7 @@ export const decodingBoardMessage = (buffer: Buffer): IReceiveData => {
   } else {
     result.timestamp = getTimeStamp(buffer);
   }
-  console.log("获取时间戳", result.timestamp)
+  //console.log("获取时间戳", result.timestamp)
   // 帧id 10、11、12、13
   result.frameId = getFrameId(buffer);
   // 14字节是信号数量
