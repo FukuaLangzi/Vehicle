@@ -1,10 +1,13 @@
-import {getSignalMapKey} from "../encoding/spConfig";
-import TestConfigService from "../../../app/service/TestConfig"
-import {Buffer} from "buffer";
-import {getCollectItemFromId} from "../encoding";
-import {ProtocolType} from "../../../app/model/PreSet/Protocol.model";
+import { getSignalMapKey } from "../encoding/spConfig";
+import TestConfigService from "../../../app/service/TestConfig";
+import { Buffer } from "buffer";
+import { getCollectItemFromId } from "../encoding";
+import { ProtocolType } from "../../../app/model/PreSet/Protocol.model";
 
-export const splitBufferByDelimiter = (buffer: Buffer, delimiter: Buffer): Buffer[] => {
+export const splitBufferByDelimiter = (
+  buffer: Buffer,
+  delimiter: Buffer
+): Buffer[] => {
   let start = 0;
   const result: Buffer[] = [];
   let index = buffer.indexOf(delimiter);
@@ -18,13 +21,13 @@ export const splitBufferByDelimiter = (buffer: Buffer, delimiter: Buffer): Buffe
   result.push(buffer.subarray(start));
   result.forEach((item, index) => {
     result[index] = Buffer.concat([delimiter, item]);
-  })
+  });
   return result;
-}
+};
 
 export interface ITimeData {
-  time: number,
-  value: number
+  time: number;
+  value: number;
 }
 
 export interface IReceiveData {
@@ -54,9 +57,9 @@ const getTimeStamp = (buffer: Buffer): number => {
   // 时间戳分隔符
   const timeStampDelimiter = "-";
 
-  const getTime = (num:number) => {
-    return Math.floor((num / 16)) * 10 + num % 16;
-  }
+  const getTime = (num: number) => {
+    return Math.floor(num / 16) * 10 + (num % 16);
+  };
 
   const year = getTime(buffer[4]);
   const month = getTime(buffer[5]);
@@ -68,8 +71,8 @@ const getTimeStamp = (buffer: Buffer): number => {
   // 获得对应的时间戳  毫秒时间戳
   const data = new Date(year + 2000, month - 1, day, hour, minute, second);
 
-  return data.getTime()
-}
+  return data.getTime();
+};
 
 // 处理一个
 export const decodingBoardMessage = (buffer: Buffer): IReceiveData => {
@@ -88,7 +91,7 @@ export const decodingBoardMessage = (buffer: Buffer): IReceiveData => {
   } else {
     result.timestamp = getTimeStamp(buffer);
   }
-  console.log("获取时间戳", result.timestamp)
+  console.log("获取时间戳", result.timestamp);
   // 帧id 10、11、12、13
   result.frameId = getFrameId(buffer);
   // 14字节是信号数量
@@ -100,16 +103,15 @@ export const decodingBoardMessage = (buffer: Buffer): IReceiveData => {
   // 去掉前面16个字节
   const signalsPart = buffer.subarray(16);
 
-
   const key = getSignalMapKey(
     result.moduleId,
     result.collectType,
     result.busType,
     result.frameId
-  )
+  );
 
   if (TestConfigService.digitalKeyList.includes(key)) {
-    console.log("is Digital Key", signalsPart)
+    console.log("is Digital Key", signalsPart);
     // 第1-8个信号分别是第1-8位置，第9、10个信号是第9、10位置
     // 比如ff 03,第1-8个信号是ff的二进制1-8位置，都是1
     // 第9、10个信号是03的二进制1-2位置，都是0
@@ -127,8 +129,8 @@ export const decodingBoardMessage = (buffer: Buffer): IReceiveData => {
         sign: 0,
         integer: value,
         decimal: 0,
-        value: value
-      }
+        value: value,
+      };
     });
     return result;
   }
@@ -137,43 +139,48 @@ export const decodingBoardMessage = (buffer: Buffer): IReceiveData => {
   const signalLength = 6;
   const signals = [];
   for (let i = 0; i < result.signalCount; i++) {
-    const signal = signalsPart.subarray(i * signalLength, (i + 1) * signalLength);
+    const signal = signalsPart.subarray(
+      i * signalLength,
+      (i + 1) * signalLength
+    );
     signals.push(decodingOneSignal(signal));
   }
   result.signals = signals;
 
   return result;
-}
+};
 
 // 处理板卡状态的信息
 export const decodingBoardStatus = (buffer: Buffer): boolean[] => {
-  const result: boolean[] = []
+  const result: boolean[] = [];
   for (let i = 3; i <= 8; i++) {
     // 和1与
-    result.push((buffer[i] & 0x01) === 0x01)
+    result.push((buffer[i] & 0x01) === 0x01);
   }
-  return result
-}
+  return result;
+};
 
 // 做一个数据映射
 // 把接收到的数据映射为一个object，key为getSignalKey，value为信号值
-export const decodingBoardMessageWithMap = (receiveData: IReceiveData): Map<string, number> => {
+export const decodingBoardMessageWithMap = (
+  receiveData: IReceiveData
+): Map<string, number> => {
   const key = getSignalMapKey(
     receiveData.moduleId,
     receiveData.collectType,
     receiveData.busType,
     receiveData.frameId
-  )
+  );
 
-  const values: number[] = []
+  const values: number[] = [];
 
-  receiveData.signals.forEach(signal => {
+  receiveData.signals.forEach((signal) => {
     values.push(signal.value);
-  })
+  });
 
   const result = new Map<string, number>();
   // 序列
-  const signalOrder = TestConfigService.signalsMappingRelation.get(key)
+  const signalOrder = TestConfigService.signalsMappingRelation.get(key);
   if (!signalOrder) {
     return result;
   }
@@ -182,16 +189,15 @@ export const decodingBoardMessageWithMap = (receiveData: IReceiveData): Map<stri
     result.set(signalOrder[i], values[i]);
   }
 
-  return result
-}
-
+  return result;
+};
 
 const decodingOneSignal = (buffer: Buffer): IReceiveSignal => {
   const signalId = buffer[0];
   const signalLength = buffer[1] >> 1;
   const sign = buffer[1] & 0x01;
-  const integer = buffer[2] << 12 | buffer[3] << 4 | buffer[4] >> 4;
-  const decimal = (buffer[4] & 0x0f) << 8 | buffer[5];
+  const integer = (buffer[2] << 12) | (buffer[3] << 4) | (buffer[4] >> 4);
+  const decimal = ((buffer[4] & 0x0f) << 8) | buffer[5];
   // 0表示正数，1表示负数
   const value = (integer + decimal / 1000) * (sign === 1 ? -1 : 1);
 
@@ -201,35 +207,33 @@ const decodingOneSignal = (buffer: Buffer): IReceiveSignal => {
     sign,
     integer,
     decimal,
-    value
-  }
-}
+    value,
+  };
+};
 
 // 根据buffer的信号获取frameId
 const getFrameId = (buffer: Buffer): number => {
-  const type = getCollectItemFromId(buffer[3])!
+  const type = getCollectItemFromId(buffer[3])!;
   switch (type) {
     case ProtocolType.FlexRay:
-      return buffer[12] << 8 | buffer[13]
+      return (buffer[12] << 8) | buffer[13];
     case ProtocolType.CAN:
-      return buffer[10] << 24 | buffer[11] << 16 | buffer[12] << 8 | buffer[13]
+      return (
+        (buffer[10] << 24) | (buffer[11] << 16) | (buffer[12] << 8) | buffer[13]
+      );
     case ProtocolType.MIC:
-      return 0x00
+      return 0x00;
     case ProtocolType.B1552B:
-      return 0x00
+      return 0x00;
     case ProtocolType.Serial422:
-      return 0x00
+      return 0x00;
     case ProtocolType.Serial232:
-      return 0x00
+      return 0x00;
     case ProtocolType.Analog:
-      return 0x00
+      return 0x00;
     case ProtocolType.Digital:
-      return 0x00
+      return 0x00;
     default:
-      return 0x00
+      return 0x00;
   }
-}
-
-
-
-
+};

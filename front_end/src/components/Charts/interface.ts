@@ -28,6 +28,7 @@ export interface IChartInterface {
   during?: number;
   min?: number;
   max?: number;
+  handleUpdateData: any;
   label?: string;
   windowSize?: number;
   isReplayModal?: boolean;

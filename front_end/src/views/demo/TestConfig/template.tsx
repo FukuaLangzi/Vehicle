@@ -5,17 +5,7 @@ import DraggableComponent, {
   IDraggleComponent,
   INumberChartExtra,
 } from "@/views/demo/DataDisplay/DraggableComponent";
-import {
-  Button,
-  Input,
-  message,
-  Modal,
-  Select,
-  Slider,
-  Space,
-  Table,
-  TableProps,
-} from "antd";
+import { Button, Input, message, Modal, Slider, Space } from "antd";
 import { DragItemType } from "@/views/demo/DataDisplay/display.tsx";
 import GridLayout from "react-grid-layout";
 import { DEFAULT_TITLE, SUCCESS_CODE } from "@/constants";
@@ -30,10 +20,12 @@ import { ITemplate, ITemplateItem } from "@/apis/standard/template.ts";
 import { getTestsHistoryById } from "@/apis/request/testhistory.ts";
 import { BASE_URL } from "@/apis/url/myUrl.ts";
 import { debounce, formatTime } from "@/utils";
-import { fgetSampledData, searchForTargetData } from "@/apis/request/data.ts";
+import { fgetSampledData } from "@/apis/request/data.ts";
 import { IHistoryList } from "@/views/demo/History/history.tsx";
-
+// 引入参数管理
+import useParamsStore from "../../../store/store.ts";
 export interface ITimeData {
+  idui: any;
   time: number;
   value: number;
 }
@@ -65,9 +57,9 @@ export interface IDragItem {
 }
 
 // dataMode 不用放到useEffect，因为它不会变
-const TestTemplateForConfig: React.FC<{ dataMode: "OFFLINE" | "ONLINE" }> = ({
-  dataMode,
-}) => {
+const TestTemplateForConfig: React.FC<{
+  dataMode: "OFFLINE" | "ONLINE";
+}> = () => {
   const [testConfig, setTestConfig] = useState<ITestConfig | null>(null);
   const [mode, setMode] = useState<"CHANGING" | "COLLECTING">("CHANGING");
 
@@ -366,6 +358,25 @@ const TestTemplateForConfig: React.FC<{ dataMode: "OFFLINE" | "ONLINE" }> = ({
     });
     setDragItems(result);
   };
+  // 更新数据需要执行的函数
+  const handleUpdateData = (startTime?: any, endTime?: any, count?: any) => {
+    if (!startTime || !endTime || !count) {
+      setOpenReplaySearch(false);
+      return;
+    }
+    message.success("开始查询");
+    fgetSampledData(history.id, startTime, endTime, count).then((res) => {
+      console.log("res", res);
+
+      if (res.code === SUCCESS_CODE) {
+        setNetDataRecorder(new Map(Object.entries(res.data)));
+        message.success("查询成功");
+      } else {
+        message.error("查询失败");
+      }
+    });
+    setOpenReplaySearch(false);
+  };
 
   const renderManageButton = () => {
     const confirmChangeConfig = () => {
@@ -409,24 +420,7 @@ const TestTemplateForConfig: React.FC<{ dataMode: "OFFLINE" | "ONLINE" }> = ({
           <ReplaySearchModal
             history={history}
             open={openReplaySearch}
-            onFinished={(startTime, endTime, count) => {
-              if (!startTime || !endTime || !count) {
-                setOpenReplaySearch(false);
-                return;
-              }
-              message.success("开始查询");
-              fgetSampledData(history.id, startTime, endTime, count).then(
-                (res) => {
-                  if (res.code === SUCCESS_CODE) {
-                    setNetDataRecorder(new Map(Object.entries(res.data)));
-                    message.success("查询成功");
-                  } else {
-                    message.error("查询失败");
-                  }
-                }
-              );
-              setOpenReplaySearch(false);
-            }}
+            onFinished={handleUpdateData}
           />
         </Space>
       );
@@ -533,6 +527,7 @@ const TestTemplateForConfig: React.FC<{ dataMode: "OFFLINE" | "ONLINE" }> = ({
             isReplayModal={isReplayModal}
             onLayoutChange={updateAllByLayout}
             updateDragItem={updateDragItem}
+            handleUpdateData={handleUpdateData}
             fileHistory={undefined}
             netHistory={netDataRecorder}
           />
@@ -567,6 +562,15 @@ const ReplaySearchModal = ({
   const debounceSetPeriod = debounce((value) => {
     setPeriod(value as number[]);
   });
+  const changeParams = (period1: any, period2: any, count: any) => {
+    console.log("0000");
+
+    useParamsStore.setState({
+      period1,
+      period2,
+      count,
+    });
+  };
 
   return (
     <>
@@ -575,6 +579,8 @@ const ReplaySearchModal = ({
         onCancel={handleClose}
         onClose={handleClose}
         onOk={() => {
+          console.log("状态", period[0], period[1], count);
+          changeParams(period[0], period[1], count);
           onFinished(period[0], period[1], count);
         }}
         width={800}

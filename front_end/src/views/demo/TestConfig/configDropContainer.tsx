@@ -26,6 +26,7 @@ const ConfigDropContainer: React.FC<{
   testConfig: ITestConfig;
   isReplayModal: boolean;
   onLayoutChange: (layout: GridLayout.Layout[]) => void;
+  handleUpdateData: any;
   updateDragItem: (id: string, itemConfig: IDragItem["itemConfig"]) => void;
   fileHistory?: IHistory;
   netHistory?: Map<string, ITimeData[]>;
@@ -34,6 +35,7 @@ const ConfigDropContainer: React.FC<{
   items,
   testConfig,
   isReplayModal,
+  handleUpdateData,
   onLayoutChange,
   fileHistory,
   netHistory,
@@ -128,6 +130,8 @@ const ConfigDropContainer: React.FC<{
               }}
               onClick={() => {
                 if (item.type !== DragItemType.LINES) {
+                  console.log("这里");
+
                   handleOpenParsing(item.itemConfig.requestSignals);
                 }
               }}
@@ -137,6 +141,8 @@ const ConfigDropContainer: React.FC<{
                   return;
                 }
                 if (banModify) {
+                  console.log("打开了");
+
                   setOpen(true);
                   setOpenItemId(item.id);
                 }
@@ -148,6 +154,7 @@ const ConfigDropContainer: React.FC<{
                 fileHistory={fileHistory}
                 currentTestData={netHistory}
                 isReplayModal={isReplayModal}
+                handleUpdateData={handleUpdateData}
                 lineTypeCode={lineStyleValue}
               />
             </div>
@@ -400,6 +407,7 @@ interface ISetDragItem {
   fileHistory?: IHistory;
   currentTestData?: Map<string, ITimeData[]>;
   lineTypeCode: number;
+  handleUpdateData: any;
 }
 
 export const SetDragItem = ({
@@ -408,6 +416,7 @@ export const SetDragItem = ({
   currentTestData,
   isReplayModal,
   lineTypeCode,
+  handleUpdateData,
 }: ISetDragItem) => {
   const {
     type,
@@ -426,9 +435,6 @@ export const SetDragItem = ({
       windowSize,
     },
   } = item as IDragItem;
-
-  // const memoizedTestData = getUsefulSignal(requestSignals || [], currentTestData || new Map());
-
   return {
     [DragItemType.LINES]: (
       <LinesChart
@@ -439,6 +445,7 @@ export const SetDragItem = ({
         colors={colors || []}
         sourceType={DataSourceType.RANDOM}
         title={title}
+        handleUpdateData={handleUpdateData}
         width={width}
         height={height}
         historyData={[]}

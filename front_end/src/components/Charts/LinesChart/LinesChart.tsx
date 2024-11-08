@@ -3,8 +3,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { IChartInterface } from "@/components/Charts/interface.ts";
 import { ITimeData } from "@/views/demo/TestConfig/template.tsx";
 import { mergeKArrays } from "@/utils";
-import { Modal } from "antd";
-
+import { Modal, Input } from "antd";
+import useParamsStore from "../../../store/store.ts";
+import { updateData } from "@/apis/request/data.ts"; // 更新的api位置
 interface ISeries {
   id: string;
   name: string;
@@ -23,6 +24,7 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
     colors,
     isReplayModal,
     lineTypeCode,
+    handleUpdateData,
   } = props;
   const chartRef = useRef<echarts.ECharts | null>();
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -41,20 +43,19 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
     })
   );
 
-  // 选择区间
-  const [startRange, setStartRange] = useState(-1);
-  const [endRange, setEndRange] = useState(-1);
+  // 修改数据的组件的状态
+  const [editOpenState, seteditOpenState] = useState<boolean>(false);
 
   // 中值滤波
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const medianFilter = (
-    arr: { time: number; value: number }[],
+    arr: { idui: number; time: number; value: number }[],
     windowSize: number | string
-  ): Array<[number, number]> => {
+  ): Array<[number, number, number]> => {
     let window =
       typeof windowSize === "string" ? parseInt(windowSize) : windowSize;
     if (isNaN(window) || window <= 2) {
-      return arr.map((item) => [item.time, item.value]);
+      return arr.map((item) => [item.time, item.value, item.idui]);
     }
     if (window % 2 === 0) {
       window += 1; // 确保窗口大小为奇数
@@ -66,13 +67,13 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
 
     for (let i = 0; i < arr.length; i++) {
       if (i < halfWindow || i >= arr.length - halfWindow) {
-        result.push([arr[i].time, arr[i].value]); // 边界处保持原值
+        result.push([arr[i].time, arr[i].value, arr[i].idui]); // 边界处保持原值
       } else {
         const temp = arr
           .slice(i - halfWindow, i + halfWindow + 1)
           .map((item) => item.value);
         temp.sort((a, b) => a - b); // 排序
-        result.push([arr[i].time, temp[Math.floor(window / 2)]]); // 获取中间值，格式为 [time, value]
+        result.push([arr[i].time, temp[(Math.floor(window / 2), arr[i].idui)]]); // 获取中间值，格式为 [time, value]
       }
     }
 
@@ -84,9 +85,9 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
 
   // 让曲线更平滑的函数,取滤波后的值，然后根据时间戳的差值，取最接近的时间戳
   const smoothMedianFilter = (
-    arr: { time: number; value: number }[],
+    arr: { idui: number; time: number; value: number }[],
     windowSize: number | string
-  ): Array<[number, number]> => {
+  ): Array<[number, number, number]> => {
     const result = medianFilter(arr, windowSize);
     // 小于400个点不进行平滑，因为可能会有误差
     if (result.length < 400) {
@@ -105,7 +106,7 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
     // 矣最后一个时间为基准，前面的时间递减
     let time = result[length - 1][0];
     for (let i = length - 1; i >= 0; i--) {
-      smoothResult.push([time, result[i][1]]);
+      smoothResult.push([time, result[i][1], result[i][2]]);
       time -= timeStep;
     }
     return smoothResult;
@@ -134,6 +135,8 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
       requestSignals.forEach((signal) => {
         const signalData = data.get(signal.id);
         if (signalData) {
+          console.log(signalData, "868");
+
           // TODO 在这里添加中值滤波、平滑滤波等操作
           dataRef.current.forEach((item) => {
             if (item.id === signal.id) {
@@ -156,6 +159,8 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
       );
       // 更新之前加上虚线
       dataRef.current = dataRef.current.map((item) => {
+        console.log(item);
+
         let lineStyle: { type: string };
         if (lineTypeCode === 1) {
           // 实线
@@ -179,6 +184,7 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
         };
       });
       // Update chart options
+
       const option = {
         xAxis: {
           type: "time",
@@ -187,10 +193,34 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
         series: dataRef.current,
       };
       chartRef.current?.setOption(option);
+      updateDataFn();
     },
     [requestSignals]
   );
+  // 获取参数数据
+  const period1 = useParamsStore((state) => state.period1);
+  const period2 = useParamsStore((state) => state.period2);
+  const count = useParamsStore((state) => state.count);
+  // 当前的节点值
+  const [editInitValue, seteditInitValue] = useState();
+  // 当前的节点id
+  const [editID, seteditID] = useState();
+  // 修改的节点值
+  const [newEditValue, setnewEditValue] = useState<string | undefined>();
+  // 更新数据的函数
+  const updateDataFn = () => {
+    // 在修改后更新数据
+    console.log("2");
+    console.log(editID, newEditValue);
 
+    if (editID && newEditValue) {
+      console.log(3);
+
+      updateData(String(editID), Number(newEditValue));
+      handleUpdateData(period1, period2, count);
+      setnewEditValue(undefined);
+    }
+  };
   const requestSignalIds = requestSignals.map((signal) => signal.id).join("");
 
   useEffect(() => {
@@ -207,22 +237,25 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
         data:
           currentTestChartData
             .get(item.id)
-            ?.map((item) => [item.time, item.value]) || [],
+            ?.map((item) => [item.idui, item.time, item.value]) || [],
         color: colors ? colors[requestSignals.indexOf(item)] : undefined,
       };
     });
     // 截取时间 前length个
     xAxis.current = xAxis.current.slice(-length);
-  }, [requestSignalIds, colors]);
+  }, [requestSignalIds, colors, requestSignals, currentTestChartData]);
 
   // 同步netWorkData
   useEffect(() => {
     if (currentTestChartData && !chartRef.current?.isDisposed()) {
+      console.log("currentTestChartData222", currentTestChartData);
+
       for (const [key] of currentTestChartData) {
         const array = currentTestChartData.get(key);
         const test = [];
         array.forEach((item: any) => {
           test.push({
+            idui: item.idui,
             time: item.time,
             value:
               typeof item.value === "string"
@@ -232,6 +265,7 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
         });
         currentTestChartData.set(key, test);
       }
+
       pushData(currentTestChartData);
     }
   }, [pushData, requestSignals, currentTestChartData]);
@@ -374,46 +408,13 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
 
   useEffect(() => {
     chartRef.current?.on("click", (params) => {
-      const { data } = params;
-      if (startRange === -1) {
-        setStartRange(data[0]);
-      } else if (endRange === -1) {
-        setEndRange(data[0]);
-      } else {
-        setStartRange(data[0]);
-        setEndRange(-1);
-      }
-      const option = {
-        series: [
-          {
-            markLine: {
-              data: [
-                {
-                  xAxis: startRange === -1 ? data[0] : startRange,
-                  type: "time",
-                  // 把时间戳转换为时间
-                  label: {
-                    formatter: (params) => {
-                      return new Date(params.value).toLocaleString();
-                    },
-                  },
-                },
-                {
-                  xAxis: endRange === -1 ? data[0] : endRange,
-                  type: "time",
-                  label: {
-                    formatter: (params) => {
-                      return new Date(params.value).toLocaleString();
-                    },
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      };
-      chartRef.current?.setOption(option);
+      console.log(params);
+
+      seteditInitValue(params.data[1]);
+      seteditID(params.data[2]);
+      seteditOpenState(true);
     });
+    // 选择区间的监听事件
     let rangeStore = [0, 0];
     chartRef.current?.on("brushSelected", (params: any) => {
       if (params.batch.length < 1 || params.batch[0].areas.length < 1) {
@@ -509,14 +510,7 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
     return () => {
       chartRef.current?.off("click");
     };
-  }, [startRange, endRange]);
-
-  const isDuring = (time: number, timeOne: number, timeTwo: number) => {
-    return (
-      (time >= timeOne && time <= timeTwo) ||
-      (time <= timeOne && time >= timeTwo)
-    );
-  };
+  }, [editOpenState]);
 
   return (
     <div
@@ -527,39 +521,14 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
       }}
     >
       <LinesDataParsingModal
-        source={
-          startRange !== -1 && endRange !== -1
-            ? dataRef.current.map((item) => {
-                const result = {
-                  name: item.name,
-                  max: Math.max(
-                    ...item.data
-                      .filter((item) => isDuring(item[0], startRange, endRange))
-                      .map((item) => item[1])
-                  ),
-                  min: Math.min(
-                    ...item.data
-                      .filter((item) => isDuring(item[0], startRange, endRange))
-                      .map((item) => item[1])
-                  ),
-                  middle:
-                    item.data
-                      .filter((item) => isDuring(item[0], startRange, endRange))
-                      .reduce((prev, current) => prev + current[1], 0) /
-                    item.data.filter((item) =>
-                      isDuring(item[0], startRange, endRange)
-                    ).length,
-                };
-                return result;
-              })
-            : []
-        }
-        open={startRange !== -1 && endRange !== -1}
-        startRange={startRange}
-        endRange={endRange}
+        open={editOpenState}
+        initValue={editInitValue}
+        setnewEditValue={setnewEditValue}
         onFinished={() => {
-          setStartRange(-1);
-          setEndRange(-1);
+          seteditOpenState(false);
+          console.log("111");
+
+          updateDataFn();
         }}
       />
     </div>
@@ -569,52 +538,33 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
 export default LinesChart;
 
 const LinesDataParsingModal = ({
-  source,
   open,
-  startRange,
-  endRange,
   onFinished,
+  setnewEditValue,
+  initValue,
 }: {
-  source: {
-    name: string;
-    max: number;
-    min: number;
-    middle: number;
-  }[];
-  startRange: number;
-  endRange: number;
   open: boolean;
   onFinished: () => void;
+  initValue: any;
+  setnewEditValue: any;
 }) => {
   const handleClose = () => {
     onFinished();
+    setnowvalue(undefined);
   };
-
-  const list = source.map((item, index) => {
-    return (
-      <div style={{ marginBottom: 20 }} key={index}>
-        <p style={{ fontWeight: "bold", fontSize: 16 }}>{item.name}</p>
-        <p style={{ fontSize: 14 }}>
-          <span style={{ marginRight: 30 }}>最大值: {item.max}</span>
-          <span style={{ marginRight: 30 }}>最小值: {item.min}</span>
-          <span>均值: {item.middle}</span>
-        </p>
-      </div>
-    );
-  });
-
+  const handleChange = (e: any) => {
+    setnewEditValue(e.target.value);
+    setnowvalue(e.target.value);
+  };
+  const [nowvalue, setnowvalue] = useState(undefined);
   return (
     <Modal open={open} onCancel={handleClose} onOk={handleClose}>
-      <h3>
-        {" "}
-        分析结果：{new Date(startRange).toLocaleString()} -{" "}
-        {new Date(endRange).toLocaleString()}{" "}
-      </h3>
-      {list.length ? (
-        <div style={{ maxHeight: 600, overflowY: "scroll" }}>{list}</div>
-      ) : (
-        <div style={{ textAlign: "center" }}>无数据</div>
-      )}
+      当前的数据：{initValue}
+      <Input
+        placeholder="Basic usage"
+        value={nowvalue}
+        onChange={handleChange}
+      />
     </Modal>
   );
 };
