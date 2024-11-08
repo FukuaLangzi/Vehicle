@@ -7,13 +7,38 @@ import {getFrontFormatMessage} from "../../utils";
 let client: net.Socket;
 let reconnectInterval = 5000; // 重连间隔 5 秒
 let isManuallyClosed = false; // 是否主动断开
-
+// 数据断连定时器
+let dataTimer: NodeJS.Timeout | null = null;
+// 重开定时器
+let reconnectTimer: NodeJS.Timeout | null = null;
 export const mapToJson = (map: Map<string, ITimeData>) => {
   const obj: { [key: string]: ITimeData } = {};
   map.forEach((value, key) => {
     obj[key] = value;
   })
   return JSON.stringify(obj);
+}
+
+// 重置数据定时器
+function resetDataTimer() {
+  if (dataTimer) {
+      clearTimeout(dataTimer);
+  }
+  dataTimer = setTimeout(() => {
+      console.log('No data received for a while, attempting to reconnect...');
+      if(client) client.destroy();
+  }, 5000);//2000毫秒接收不到数据就断开连接 这里是属于被动断开
+}
+
+// 设置重新连接的定时器
+function scheduleReconnect(hostPortList: Array<{ host: string, port: number }>,
+  index = 0,
+  useBeidou: boolean = true) {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(() => {
+      console.log('尝试重新连接...');
+      connectWithMultipleBoards(hostPortList, 0, useBeidou); // 尝试重新连接
+  }, 1000); // 每1秒尝试一次重新连接
 }
 
 // 定义一个递归函数来遍历host和port数组
@@ -49,18 +74,9 @@ export const connectWithMultipleBoards = (
       clearTimeout(timeOut);
       resolve(true);
     });
-    let idleTimer: NodeJS.Timeout | null = null;
-    function resetIdleTimer() {
-      if (idleTimer) {
-          clearTimeout(idleTimer);
-      }
-      idleTimer = setTimeout(() => {
-          console.log('No data received for a while, attempting to reconnect...');
-          if(client) client.end();
-      }, 2000);//2000毫秒接收不到数据就断开连接 这里是属于被动断开
-  }
+    
     client.on('data', (data) => {
-      resetIdleTimer();// 收到数据后重置重连计时器
+      resetDataTimer();// 收到数据后重置数据断开计时器
       try {
         // 1. 解析数据,
         const datas = splitBufferByDelimiter(data, Buffer.from([0xcd, 0xef]));
@@ -116,13 +132,22 @@ export const connectWithMultipleBoards = (
 
     client.on('end', () => {
       console.log('连接已结束');
-      if (!isManuallyClosed) {
-        setTimeout(() => {
-          reconnectWithMultipleBoards(hostPortList, index,true);
-        }, reconnectInterval);
+      if(dataTimer) clearTimeout(dataTimer);
+      if(reconnectTimer) clearTimeout(reconnectTimer);
+      //没用的狗屎逻辑
+      // if (!isManuallyClosed) {
+      //   setTimeout(() => {
+      //     reconnectWithMultipleBoards(hostPortList, index,true);
+      //   }, reconnectInterval);
+      // }
+    });
+    client.on('close', () => {
+      console.log('连接已关闭');
+      if(dataTimer) clearTimeout(dataTimer);
+      if(!isManuallyClosed){
+        scheduleReconnect(hostPortList, index,true);
       }
     });
-
     client.on('error', (err) => {
       console.log(`连接错误: ${err.message}`, `中断类型`, isManuallyClosed ? '手动' : '被动');
 
@@ -132,15 +157,16 @@ export const connectWithMultipleBoards = (
         return;
       }
 
-      if (!isManuallyClosed) {
-        console.log('尝试下一个连接', 'ip:', hostPortList[index].host, 'port:', hostPortList[index].port);
-        connectWithMultipleBoards(hostPortList, index + 1)
-          .then(resolve)
-          .catch(reject);
-      } else {
-        client.end();
-        reject(err);
-      }
+      // 没用的狗屎逻辑
+      // if (!isManuallyClosed) {
+      //   console.log('尝试下一个连接', 'ip:', hostPortList[index].host, 'port:', hostPortList[index].port);
+      //   connectWithMultipleBoards(hostPortList, index + 1)
+      //     .then(resolve)
+      //     .catch(reject);
+      // } else {
+      //   client.end();
+      //   reject(err);
+      // }
     });
   });
 };
