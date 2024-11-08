@@ -224,13 +224,13 @@ class TestConfigService {
     // 创建一条新的记录
     await this.createNewRecord(testConfig!);
 
-    // // TODO 连接下位机并且发送消息,调试的时候没有下位机所以注释掉，使用startMock
-    // // 下发逻辑放到后面，因为要等到所有的数据都准备好了才能下发,并且如果失败、停止下发的时候比较Ok
-    // try {
-    //   await connectWithMultipleBoards(hostPortList, 0, this.useBeidou);
-    // } catch (e) {
-    //   return "连接下位机失败";
-    // }
+    // TODO 连接下位机并且发送消息,调试的时候没有下位机所以注释掉，使用startMock
+    // 下发逻辑放到后面，因为要等到所有的数据都准备好了才能下发,并且如果失败、停止下发的时候比较Ok
+    try {
+      await connectWithMultipleBoards(hostPortList, 0, this.useBeidou);
+    } catch (e) {
+      return "连接下位机失败";
+    }
 
     // 发送所有消息给板子
     try {
@@ -248,7 +248,7 @@ class TestConfigService {
     await this.storeCurrentConfigToSql(testConfig!);
 
     // TODO 模拟数据
-    startMockBoardMessage(this.signalsMappingRelation);
+    // startMockBoardMessage(this.signalsMappingRelation);
     return undefined;
   }
 

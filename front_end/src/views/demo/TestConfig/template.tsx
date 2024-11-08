@@ -25,7 +25,7 @@ import { IHistoryList } from "@/views/demo/History/history.tsx";
 // 引入参数管理
 import useParamsStore from "../../../store/store.ts";
 export interface ITimeData {
-  idui: any;
+  testId: number;
   time: number;
   value: number;
 }
