@@ -91,7 +91,7 @@ export const decodingBoardMessage = (buffer: Buffer): IReceiveData => {
   } else {
     result.timestamp = getTimeStamp(buffer);
   }
-  console.log("获取时间戳", result.timestamp);
+  //console.log("获取时间戳", result.timestamp)
   // 帧id 10、11、12、13
   result.frameId = getFrameId(buffer);
   // 14字节是信号数量
@@ -111,7 +111,7 @@ export const decodingBoardMessage = (buffer: Buffer): IReceiveData => {
   );
 
   if (TestConfigService.digitalKeyList.includes(key)) {
-    console.log("is Digital Key", signalsPart);
+    //console.log("is Digital Key", signalsPart)
     // 第1-8个信号分别是第1-8位置，第9、10个信号是第9、10位置
     // 比如ff 03,第1-8个信号是ff的二进制1-8位置，都是1
     // 第9、10个信号是03的二进制1-2位置，都是0
@@ -153,7 +153,7 @@ export const decodingBoardMessage = (buffer: Buffer): IReceiveData => {
 // 处理板卡状态的信息
 export const decodingBoardStatus = (buffer: Buffer): boolean[] => {
   const result: boolean[] = [];
-  for (let i = 3; i <= 8; i++) {
+  for (let i = 3; i <= 11; i++) {
     // 和1与
     result.push((buffer[i] & 0x01) === 0x01);
   }

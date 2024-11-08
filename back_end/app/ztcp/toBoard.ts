@@ -49,8 +49,18 @@ export const connectWithMultipleBoards = (
       clearTimeout(timeOut);
       resolve(true);
     });
-
+    let idleTimer: NodeJS.Timeout | null = null;
+    function resetIdleTimer() {
+      if (idleTimer) {
+          clearTimeout(idleTimer);
+      }
+      idleTimer = setTimeout(() => {
+          console.log('No data received for a while, attempting to reconnect...');
+          if(client) client.end();
+      }, 2000);//2000毫秒接收不到数据就断开连接 这里是属于被动断开
+  }
     client.on('data', (data) => {
+      resetIdleTimer();// 收到数据后重置重连计时器
       try {
         // 1. 解析数据,
         const datas = splitBufferByDelimiter(data, Buffer.from([0xcd, 0xef]));
@@ -59,7 +69,7 @@ export const connectWithMultipleBoards = (
           // 用来处理表示各个板卡是否有用的信息
           if (item[0] === 0xcd && item[1] === 0xef && item[2] === 0xed) {
             const status = decodingBoardStatus(item)
-            console.log("获取板卡状态:", status)
+            // console.log("获取板卡状态:", status)
             TestConfigService.updateBoardStatus(status)
             return
           }
@@ -75,7 +85,7 @@ export const connectWithMultipleBoards = (
             message[key] = value
           })
 
-          console.log("decodingBoardMessageWith Map result ", result);
+          //console.log("decodingBoardMessageWith Map result ", result);
           const msg:{ [key: string]: number } = {}
           result.forEach((value, key) => {
             msg[key] = value

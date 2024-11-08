@@ -232,13 +232,20 @@ class TestConfigService {
     //   return "连接下位机失败";
     // }
 
-    // // 发送所有消息给板子
-    // try {
-    //   await sendMultipleMessagesBoard(res.resultMessages, 1000);
-    // } catch (e) {
-    //   return "向下位机发送消息失败";
-    // }
-    // await this.storeCurrentConfigToSql(testConfig!);
+    // 发送所有消息给板子
+    try {
+      await sendMultipleMessagesBoard(res.resultMessages, 1000);
+    } catch (e) {
+      return "向下位机发送消息失败";
+    }
+
+    // 下发配置后直接连接下位机
+    try {
+      await this.startCurrentTcp();
+    } catch (e) {
+      return "连接下位机失败";
+    }
+    await this.storeCurrentConfigToSql(testConfig!);
 
     // TODO 模拟数据
     startMockBoardMessage(this.signalsMappingRelation);
@@ -274,8 +281,14 @@ class TestConfigService {
    * 停止当前下发
    */
   async stopCurrentTestConfig() {
-    stopMockBoardMessage();
-    // await sendMultipleMessagesBoard(this.banMessage, 200);
+    // stopMockBoardMessage();
+    // 断开下位机
+    try {
+      await this.stopCurrentTcp();
+    } catch (e) {
+      return "连接下位机失败";
+    }
+    await sendMultipleMessagesBoard(this.banMessage, 200);
     setTimeout(
       async (
         historyId,
@@ -323,12 +336,13 @@ class TestConfigService {
     };
   }) {
     // 如果当前的currentTestConfigHistory超过了CURRENT_DATA_LIMIT，那么存储到数据库
-    if (this.currentTestConfigHistoryData.length > CURRENT_DATA_LIMIT) {
+    if (this.currentTestConfigHistoryData.length >= CURRENT_DATA_LIMIT) {
       console.log(
         "存储到数据库,当前数据量",
         this.currentTestConfigHistoryData.length
       );
       const arr = Array.from(this.currentTestConfigHistoryData);
+      console.log("存储前数据", arr.length);
       this.clearOnlyData();
       await this.saveCurrentDataToSql(
         this.currentTestConfig!.name,

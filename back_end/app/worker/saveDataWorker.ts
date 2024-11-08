@@ -32,14 +32,27 @@ const manageData = (data: IData[]): IData[] => {
   console.log('data',data.length);
   for (const signalId of signalIds) {
     const arr = data.filter(item => item.signalId === signalId);
-    const length = arr.length;
+    let length = arr.length;
+    // 扩充值 增加到1000条数据
+    let index = 101;
+    while(length > 980 && length <1000){
+        if(index <900){
+          arr.splice(index,0,arr[index-1]);
+          index+=50;
+          length++;
+        }else{
+          arr.splice(index,0,arr[index-1]);
+          index+=10;
+          length++;
+        }
+    }
     let timeStep = (arr[length - 1].time - arr[0].time) / (length + 1);
     timeStep = getRoundedTimeStep(timeStep);
     let time = arr[length - 1].time;
-    const startDate = new Date(time);
-    const formattedDate = format(startDate, 'yyyy-MM-dd HH:mm:ss.SSS');
-    const endDate = new Date(arr[0].time);
-    const formattedEndDate = format(endDate, 'yyyy-MM-dd HH:mm:ss.SSS');
+    const endDate = new Date(time);
+    const formattedDate = format(endDate, 'yyyy-MM-dd HH:mm:ss.SSS');
+    const startDate = new Date(arr[0].time);
+    const formattedEndDate = format(startDate, 'yyyy-MM-dd HH:mm:ss.SSS');
     console.log('signalId',signalId);
     console.log('length',length);
     console.log('timeStep',timeStep);
