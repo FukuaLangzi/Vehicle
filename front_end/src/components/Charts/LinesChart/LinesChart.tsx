@@ -244,13 +244,14 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
         const test = [];
         array.forEach((item: any) => {
           if (item.value !== undefined && item.value !== null) {
+            const val =
+              typeof item.value === "string"
+                ? item.value
+                : item.value.toFixed(6);
             test.push({
               id: item.id,
               time: item.time,
-              value:
-                typeof item.value === "string"
-                  ? item.value
-                  : item.value.toFixed(6),
+              value: val,
             });
           }
         });
@@ -363,6 +364,19 @@ const LinesChart: React.FC<IChartInterface> = (props) => {
           ],
           tooltip: {
             trigger: "axis",
+            formatter: function (params: any) {
+              const dom = params
+                .map((item: any) => {
+                  return `<span style="display:flex; justify-content:space-between"><div>${
+                    item.marker + item.seriesName
+                  }</div><div><b>${item.data[1]}</b></div></span>`;
+                })
+                .join("");
+              const result =
+                `<span style="margin-right: 80px;">${params[0].axisValueLabel}</span>` +
+                dom;
+              return result;
+            },
           },
           legend: {
             data: dataRef.current.map((item) => item.name),
