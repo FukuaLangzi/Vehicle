@@ -11,6 +11,8 @@ let isManuallyClosed = false; // 是否主动断开
 let dataTimer: NodeJS.Timeout | null = null;
 // 重开定时器
 let reconnectTimer: NodeJS.Timeout | null = null;
+// 设置连接的过时器
+const CONNECTION_TIMEOUT = 5; // 连接超时时间为1秒
 export const mapToJson = (map: Map<string, ITimeData>) => {
   const obj: { [key: string]: ITimeData } = {};
   map.forEach((value, key) => {
@@ -27,7 +29,7 @@ function resetDataTimer() {
   dataTimer = setTimeout(() => {
       console.log('No data received for a while, attempting to reconnect...');
       if(client) client.destroy();
-  }, 5000);//2000毫秒接收不到数据就断开连接 这里是属于被动断开
+  }, 2000);//2000毫秒接收不到数据就断开连接 这里是属于被动断开
 }
 
 // 设置重新连接的定时器
@@ -35,10 +37,15 @@ function scheduleReconnect(hostPortList: Array<{ host: string, port: number }>,
   index = 0,
   useBeidou: boolean = true) {
   if (reconnectTimer) clearTimeout(reconnectTimer);
-  reconnectTimer = setTimeout(() => {
+  console.log('是否手动关闭1',isManuallyClosed);
+  if(!isManuallyClosed){
+    reconnectTimer = setTimeout(() => {
       console.log('尝试重新连接...');
       connectWithMultipleBoards(hostPortList, 0, useBeidou); // 尝试重新连接
   }, 1000); // 每1秒尝试一次重新连接
+  }else{
+    console.log('手动关闭连接，不再尝试重新连接');
+  }
 }
 
 // 定义一个递归函数来遍历host和port数组
@@ -47,8 +54,8 @@ export const connectWithMultipleBoards = (
   index = 0,
   useBeidou: boolean = true
 ) => {
-
-  isManuallyClosed = false
+  // 狗屎才能写出来的狗屎代码
+  // isManuallyClosed = false
   return new Promise<boolean>((resolve, reject) => {
     if (index >= hostPortList.length) {
       reject(false);
@@ -60,10 +67,13 @@ export const connectWithMultipleBoards = (
     console.log(`尝试连接: ${host}:${port}`);
 
     let isTimeout = false;
+    // 设置连接超时
+    // client.setTimeout(CONNECTION_TIMEOUT);
     const timeOut = setTimeout(() => {
-      client.end();
-      isTimeout = true;
-      reject(new Error('连接超时'));
+      if(client) client.destroy();
+      console.log(`连接超时: ${host}:${port}`);
+      // isTimeout = true;
+      // reject(new Error('连接超时'));
     }, 5000);
 
     client = net.connect({
@@ -71,7 +81,11 @@ export const connectWithMultipleBoards = (
       host,
     }, () => {
       console.log(`${port} ${host} 建立链接成功`);
-      clearTimeout(timeOut);
+      if(timeOut) clearTimeout(timeOut);
+      // 连接成功后关闭重连计时器
+      if(reconnectTimer) clearTimeout(reconnectTimer);
+      // 启动时启动数据重连计时器
+      // resetDataTimer();
       resolve(true);
     });
     
@@ -144,10 +158,13 @@ export const connectWithMultipleBoards = (
     client.on('close', () => {
       console.log('连接已关闭');
       if(dataTimer) clearTimeout(dataTimer);
+      console.log('是否手动关闭2',isManuallyClosed);
+      // 没有手动关闭的情况下尝试重连
       if(!isManuallyClosed){
         scheduleReconnect(hostPortList, index,true);
       }
     });
+
     client.on('error', (err) => {
       console.log(`连接错误: ${err.message}`, `中断类型`, isManuallyClosed ? '手动' : '被动');
 
@@ -197,8 +214,10 @@ export const reconnectWithMultipleBoards = async (hostPortList: Array<{ host: st
 export const disconnectWithBoard = () => {
   isManuallyClosed = true;
   if (client) {
-    client.end(); // 结束连接
+    client.destroy(); // 结束连接
     console.log('Connection closed manually');
+    console.log('是否主动断开3',isManuallyClosed);
+    
   }
 }
 
