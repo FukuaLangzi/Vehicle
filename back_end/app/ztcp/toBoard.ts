@@ -29,7 +29,7 @@ function resetDataTimer() {
   dataTimer = setTimeout(() => {
       console.log('No data received for a while, attempting to reconnect...');
       if(client) client.destroy();
-  }, 2000);//2000毫秒接收不到数据就断开连接 这里是属于被动断开
+  }, 5000);//2000毫秒接收不到数据就断开连接 这里是属于被动断开
 }
 
 // 设置重新连接的定时器
@@ -85,7 +85,7 @@ export const connectWithMultipleBoards = (
       // 连接成功后关闭重连计时器
       if(reconnectTimer) clearTimeout(reconnectTimer);
       // 启动时启动数据重连计时器
-      // resetDataTimer();
+      resetDataTimer();
       resolve(true);
     });
     
