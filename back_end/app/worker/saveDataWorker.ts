@@ -23,6 +23,12 @@ let isProcessing = false;
 const getRoundedTimeStep = (timeStep: number) => {
   return Math.pow(10, Math.round(Math.log10(timeStep)));
 }
+let lastTime: number | null = null;
+
+export const resetTime = () => {
+    console.log('重置时间----------');
+    lastTime = null;
+}
 
 const manageData = (data: IData[]): IData[] => {
   // 对于每一个signalId的数据，取相同信号id的最后一个时间戳和第一个时间戳，然后根据时间戳的差值，取最接近的时间戳
@@ -30,42 +36,62 @@ const manageData = (data: IData[]): IData[] => {
   const result: IData[] = [];
   console.log('signalIds',signalIds);
   console.log('data',data.length);
+  //对于1000hz的信号统一进行赋值
+  //小于1000hz的信号还是按照自己的节奏来
   for (const signalId of signalIds) {
     const arr = data.filter(item => item.signalId === signalId);
     let length = arr.length;
-    // 扩充值 增加到1000条数据
-    let index = 101;
-    while(length > 980 && length <1000){
-        if(index <900){
-          arr.splice(index,0,arr[index-1]);
-          index+=50;
+    if (length > 500) {
+      // 扩充值 增加到1000条数据
+      let index = 101;
+      while (length > 500 && length < 900) {
+        if (index < 900) {
+          arr.splice(index, 0, arr[index - 1]);
+          index += 30;
           length++;
-        }else{
-          arr.splice(index,0,arr[index-1]);
-          index+=10;
+        } else {
+          arr.splice(index, 0, arr[index - 1]);
+          index += 10;
           length++;
         }
-    }
-    let timeStep = (arr[length - 1].time - arr[0].time) / (length + 1);
-    timeStep = getRoundedTimeStep(timeStep);
-    let time = arr[length - 1].time;
-    const endDate = new Date(time);
-    const formattedDate = format(endDate, 'yyyy-MM-dd HH:mm:ss.SSS');
-    const startDate = new Date(arr[0].time);
-    const formattedEndDate = format(startDate, 'yyyy-MM-dd HH:mm:ss.SSS');
-    console.log('signalId',signalId);
-    console.log('length',length);
-    console.log('timeStep',timeStep);
-    console.log('starttimestep',arr[0].time);
-    console.log('endtimestep',arr[length - 1].time);
-    console.log('startTime',formattedDate);
-    console.log('endTime',formattedEndDate);
-    for (let i = length - 1; i >= 0; i--) {
-      result.unshift({
-        ...arr[i],
-        time
-      });
-      time -= timeStep;
+      }
+      if(lastTime != null){
+          lastTime += 1000;
+      }else{
+        lastTime = arr[length-1].time;
+      }
+      let timeStep = 1;
+      let time: number = lastTime;
+          for (let i = length - 1; i >= 0; i--) {
+            result.unshift({
+              ...arr[i],
+              time
+            });
+            time -= timeStep;
+          }
+      const lastDate = new Date(lastTime);
+      const formattedLastDate = format(lastDate, 'yyyy-MM-dd HH:mm:ss.SSS');
+      console.log('signalId', signalId);
+      console.log('length', length);
+      console.log('lastTime', time,formattedLastDate);
+      for (let i = length - 1; i >= 0; i--) {
+        result.unshift({
+          ...arr[i],
+          time
+        });
+        time -= timeStep;
+      }
+    }else{
+      let timeStep = (arr[length - 1].time - arr[0].time) / (length + 1);
+      timeStep = getRoundedTimeStep(timeStep);
+      let time = arr[length - 1].time;
+      for (let i = length - 1; i >= 0; i--) {
+        result.unshift({
+          ...arr[i],
+          time
+        });
+        time -= timeStep;
+      }
     }
   }
   result.sort((a, b) => a.time - b.time);

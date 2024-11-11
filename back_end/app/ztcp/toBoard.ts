@@ -3,6 +3,7 @@ import {decodingBoardMessage, decodingBoardMessageWithMap, decodingBoardStatus, 
 import {IFrontMessage, sendMessageToFront} from "./toFront";
 import TestConfigService from "../service/TestConfig";
 import {getFrontFormatMessage} from "../../utils";
+import { resetTime } from "../worker/saveDataWorker";
 
 let client: net.Socket;
 let reconnectInterval = 5000; // 重连间隔 5 秒
@@ -88,6 +89,10 @@ export const connectWithMultipleBoards = (
       resetDataTimer();
       resolve(true);
     });
+
+    // 每次重新连接后都重置时间
+    resetTime();
+
     
     client.on('data', (data) => {
       resetDataTimer();// 收到数据后重置数据断开计时器
